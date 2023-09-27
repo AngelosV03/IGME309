@@ -23,7 +23,7 @@ class Application
 	vector3 m_v3Rotation;
 	String m_sSteve = "Minecraft\\Steve.obj";
 private:
-	String m_sProgrammer = "Alberto Bobadilla - labigm@rit.edu";
+	String m_sProgrammer = "Angelos Veloudos - av1904@rit.edu";
 	static ImGuiObject gui; //GUI object
 
 	uint m_uRenderCallCount = 0; //count of render calls per frame

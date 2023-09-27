@@ -88,6 +88,7 @@ void MyMesh::GenerateCylinder(float a_fRadius, float a_fHeight, int a_nSubdivisi
 	GenerateCube(a_fRadius * 2.0f, a_v3Color);
 	// -------------------------------
 
+
 	// Adding information about color
 	CompleteMesh(a_v3Color);
 	CompileOpenGL3X();
