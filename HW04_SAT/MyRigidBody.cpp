@@ -6,8 +6,133 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 	//TODO: Calculate the SAT algorithm I STRONGLY suggest you use the
 	//Real Time Collision detection algorithm for OBB here but feel free to
 	//implement your own solution.
+
+	// Testing the axes
+	float axisA;
+	float axisB;
+
+	// Rotation matrix and absolute value of the rotation matrix
+	matrix3 rotationMatrix;
+	matrix3 absoluteValueRotation;
+
+	// Generate the rotation matrix expressing the other object in this object's coordinate frame
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			rotationMatrix[i][j] = glm::dot(m_m4ToWorld[i], a_pOther->m_m4ToWorld[j]);
+		}
+	}
+
+	// Find the global centers
+	vector3 globalCenterA = (m_v3MaxG + m_v3MinG) / 2.0f;
+	vector3 globalCenterB = (a_pOther->m_v3MaxG + a_pOther->m_v3MinG) / 2.0f;
+
+	// Compute the translation vector
+	vector3 translation = globalCenterB - globalCenterA;
+	translation = vector3(glm::dot(translation, vector3(m_m4ToWorld[0])), glm::dot(translation, vector3(m_m4ToWorld[1])), glm::dot(translation, vector3(m_m4ToWorld[2])));
+
+	// Compute common subexpressions
+	// Epsilon is needed for when the cross product is nearly null
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			absoluteValueRotation[i][j] = abs(rotationMatrix[i][j]) + FLT_EPSILON;
+		}
+	}
+
+	// Test this object's X, Y, and Z axes
+	for (int i = 0; i < 3; i++)
+	{
+		axisA = m_v3HalfWidth[i];
+		axisB = a_pOther->m_v3HalfWidth[0] * absoluteValueRotation[i][0] + a_pOther->m_v3HalfWidth[1] * absoluteValueRotation[i][1] + a_pOther->m_v3HalfWidth[2] * absoluteValueRotation[i][2];
+		if (abs(translation[i]) > axisA + axisB) return i + 1;
+	}
+
+	// Test other object's X, Y, and Z axes
+	for (int i = 0; i < 3; i++)
+	{
+		axisA = m_v3HalfWidth[0] * absoluteValueRotation[0][i] + m_v3HalfWidth[1] * absoluteValueRotation[1][i] + m_v3HalfWidth[2] * absoluteValueRotation[2][i];
+		axisB = a_pOther->m_v3HalfWidth[i];
+		if (abs(translation[0] * rotationMatrix[0][i] + translation[1] * rotationMatrix[1][i] + translation[2] * rotationMatrix[2][i]) > axisA + axisB) return i + 4;
+	}
+
+	// Test this X against the other X
+	axisA = m_v3HalfWidth[1] * absoluteValueRotation[2][0] + m_v3HalfWidth[2] * absoluteValueRotation[1][0];
+	axisB = a_pOther->m_v3HalfWidth[1] * absoluteValueRotation[0][2] + a_pOther->m_v3HalfWidth[2] * absoluteValueRotation[0][1];
+	if (abs(translation[2] * rotationMatrix[1][0] - translation[1] * rotationMatrix[2][0]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AXxBX;
+	}
+
+	// Test this X against the other Y
+	axisA = m_v3HalfWidth[1] * absoluteValueRotation[2][1] + m_v3HalfWidth[2] * absoluteValueRotation[1][1];
+	axisB = a_pOther->m_v3HalfWidth[0] * absoluteValueRotation[0][2] + a_pOther->m_v3HalfWidth[2] * absoluteValueRotation[0][0];
+	if (abs(translation[2] * rotationMatrix[1][1] - translation[1] * rotationMatrix[2][1]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AXxBY;
+	}
+
+	// Test this X against the other Z
+	axisA = m_v3HalfWidth[1] * absoluteValueRotation[2][2] + m_v3HalfWidth[2] * absoluteValueRotation[1][2];
+	axisB = a_pOther->m_v3HalfWidth[0] * absoluteValueRotation[0][1] + a_pOther->m_v3HalfWidth[1] * absoluteValueRotation[0][0];
+	if (abs(translation[2] * rotationMatrix[1][2] - translation[1] * rotationMatrix[2][2]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AXxBZ;
+	}
+
+	// Test this Y against the other X
+	axisA = m_v3HalfWidth[0] * absoluteValueRotation[2][0] + m_v3HalfWidth[2] * absoluteValueRotation[0][0];
+	axisB = a_pOther->m_v3HalfWidth[1] * absoluteValueRotation[1][2] + a_pOther->m_v3HalfWidth[2] * absoluteValueRotation[1][1];
+	if (abs(translation[0] * rotationMatrix[2][0] - translation[2] * rotationMatrix[0][0]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AYxBX;
+	}
+
+	// Test this Y against the other Y
+	axisA = m_v3HalfWidth[0] * absoluteValueRotation[2][1] + m_v3HalfWidth[2] * absoluteValueRotation[0][1];
+	axisB = a_pOther->m_v3HalfWidth[0] * absoluteValueRotation[1][2] + a_pOther->m_v3HalfWidth[2] * absoluteValueRotation[1][0];
+	if (abs(translation[0] * rotationMatrix[2][1] - translation[2] * rotationMatrix[0][1]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AYxBY;
+	}
+
+	// Test this Y against the other Z
+	axisA = m_v3HalfWidth[0] * absoluteValueRotation[2][2] + m_v3HalfWidth[2] * absoluteValueRotation[0][2];
+	axisB = a_pOther->m_v3HalfWidth[0] * absoluteValueRotation[1][1] + a_pOther->m_v3HalfWidth[1] * absoluteValueRotation[1][0];
+	if (abs(translation[0] * rotationMatrix[2][2] - translation[2] * rotationMatrix[0][2]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AYxBZ;
+	}
+
+	// Test this Z against the other X
+	axisA = m_v3HalfWidth[0] * absoluteValueRotation[1][0] + m_v3HalfWidth[1] * absoluteValueRotation[0][0];
+	axisB = a_pOther->m_v3HalfWidth[1] * absoluteValueRotation[2][2] + a_pOther->m_v3HalfWidth[2] * absoluteValueRotation[2][1];
+	if (abs(translation[1] * rotationMatrix[0][0] - translation[0] * rotationMatrix[1][0]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AZxBX;
+	}
+
+	// Test this Z against the other Y
+	axisA = m_v3HalfWidth[0] * absoluteValueRotation[1][1] + m_v3HalfWidth[1] * absoluteValueRotation[0][1];
+	axisB = a_pOther->m_v3HalfWidth[0] * absoluteValueRotation[2][2] + a_pOther->m_v3HalfWidth[2] * absoluteValueRotation[2][0];
+	if (abs(translation[1] * rotationMatrix[0][1] - translation[0] * rotationMatrix[1][1]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AZxBY;
+	}
+
+	// Test this Z against the other Z
+	axisA = m_v3HalfWidth[0] * absoluteValueRotation[1][2] + m_v3HalfWidth[1] * absoluteValueRotation[0][2];
+	axisB = a_pOther->m_v3HalfWidth[0] * absoluteValueRotation[2][1] + a_pOther->m_v3HalfWidth[1] * absoluteValueRotation[2][0];
+	if (abs(translation[1] * rotationMatrix[0][2] - translation[0] * rotationMatrix[1][2]) > axisA + axisB)
+	{
+		return BTXs::eSATResults::SAT_AZxBZ;
+	}
+
 	return BTXs::eSATResults::SAT_NONE;
 }
+
 bool MyRigidBody::IsColliding(MyRigidBody* const a_pOther)
 {
 	//check if spheres are colliding
@@ -20,6 +145,11 @@ bool MyRigidBody::IsColliding(MyRigidBody* const a_pOther)
 	if (bColliding) //they are colliding with bounding sphere
 	{
 		uint nResult = SAT(a_pOther);
+
+		if (nResult != 0)
+		{
+			bColliding = false;
+		}
 
 		if (bColliding) //The SAT shown they are colliding
 		{
